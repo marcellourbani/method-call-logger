@@ -1,0 +1,22 @@
+{
+  "name": "method-call-logger",
+  "version": "1.0.0",
+  "description": "Logs method calls via Es6 proxies",
+  "main": "build/index.js",
+  "scripts": {
+    "test": "jest",
+    "build": "tsc"
+  },
+  "author": "Marcello Urbani <marcello.urbani@gmail.com>",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/marcellourbani/method-call-logger"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "@types/jest": "^24.0.18",
+    "jest": "^24.9.0",
+    "ts-jest": "^24.0.2",
+    "typescript": "^3.5.3"
+  }
+}
