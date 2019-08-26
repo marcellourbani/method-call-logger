@@ -20,14 +20,28 @@ const testObject = {
   }
 }
 
-test("proxy intercepts method call", () => {
-  let intercepted: boolean = false
-  const proxied = createProxy(testObject, () => {
-    intercepted = true
-  })
+function wrap(resolve = true) {
+  let details: MethodCall | undefined
+  const ret = {
+    details,
+    proxied: createProxy(
+      testObject,
+      actualDetails => {
+        ret.details = actualDetails
+      },
+      resolve
+    )
+  }
+  return ret
+}
 
-  proxied.method()
-  expect(intercepted).toBe(true)
+test("proxy intercepts method call", () => {
+  const wrapped = wrap()
+  const res = wrapped.proxied.method()
+  expect(res).toBe(1)
+  expect(wrapped.details).toBeDefined()
+  expect(wrapped.details!.resolvedPromise).toBe(false)
+  expect(wrapped.details!.result).toBe(1)
 })
 
 test("call survives errors in callback", () => {
@@ -48,65 +62,53 @@ test("proxy doesn't intercept property access", () => {
 })
 
 test("callback called on error", () => {
-  let intercepted: boolean = false
-  const proxied = createProxy(testObject, () => {
-    intercepted = true
-  })
+  const wrapped = wrap()
   try {
-    proxied.exceptMethod()
+    wrapped.proxied.exceptMethod()
     fail("exception should be raised")
   } catch (e) {}
-  expect(intercepted).toBe(true)
+  expect(wrapped.details).toBeDefined()
+  expect(wrapped.details!.error).toBeDefined()
+  expect(wrapped.details!.resolvedPromise).toBe(false)
 })
 
 test("Async callback", async () => {
-  let details: MethodCall | undefined = undefined
-  const proxied = createProxy(testObject, actualDetails => {
-    details = actualDetails
-  })
+  const wrapped = wrap()
 
-  return proxied.fulfilledPromise("foo").then(() => {
-    if (!details) fail("callback not invoked")
-    expect(details!.result).toBe("foo")
-    expect(details!.methodName).toBe("fulfilledPromise")
+  return wrapped.proxied.fulfilledPromise("foo").then(() => {
+    if (!wrapped.details) fail("callback not invoked")
+    expect(wrapped.details!.result).toBe("foo")
+    expect(wrapped.details!.methodName).toBe("fulfilledPromise")
+    expect(wrapped.details!.resolvedPromise).toBe(true)
   })
 })
 
 test("Async callback with errors", () => {
-  let details: MethodCall | undefined = undefined
-  const proxied = createProxy(testObject, actualDetails => {
-    details = actualDetails
-  })
-
-  return proxied
+  const wrapped = wrap()
+  return wrapped.proxied
     .failedPromise()
     .then(() => fail("promise chould have been rejected"))
     .catch(() => {
-      if (!details) fail("callback not invoked")
-      expect(details!.result).toBeUndefined()
-      expect(details!.error).toBeDefined()
-      expect(details!.error!.message).toBe("rejected")
+      if (!wrapped.details) fail("callback not invoked")
+      expect(wrapped.details!.result).toBeUndefined()
+      expect(wrapped.details!.error).toBeDefined()
+      expect(wrapped.details!.error!.message).toBe("rejected")
+      expect(wrapped.details!.resolvedPromise).toBe(true)
     })
 })
 
 test("Async callback without proxy resolution", () => {
-  let details: MethodCall | undefined = undefined
-  const proxied = createProxy(
-    testObject,
-    actualDetails => {
-      details = actualDetails
-    },
-    false
-  )
+  const wrapped = wrap(false)
 
-  return proxied
+  return wrapped.proxied
     .failedPromise()
     .then(() => fail("promise chould have been rejected"))
     .catch(() => {
-      if (!details) fail("callback not invoked")
-      expect(typeof details!.result).toBe("object")
-      expect(details!.error).toBeUndefined()
-      return details!.result!.catch((err: Error) => {
+      if (!wrapped.details) fail("callback not invoked")
+      expect(typeof wrapped.details!.result).toBe("object")
+      expect(wrapped.details!.error).toBeUndefined()
+      expect(wrapped.details!.resolvedPromise).toBe(false)
+      return wrapped.details!.result!.catch((err: Error) => {
         expect(err.message).toBe("rejected")
       })
     })

@@ -4,6 +4,7 @@ export interface MethodCall {
   start: number
   duration: number
   failed: boolean
+  resolvedPromise: boolean
   result?: any
   error?: any // usually Error
 }
@@ -21,6 +22,7 @@ function eatException(callback: loggerCB, call: MethodCall) {
 function handlePromises(call: MethodCall, callback: loggerCB) {
   const needResolution = isPromise(call.result)
   if (needResolution) {
+    call.resolvedPromise = true
     call.result
       .then((res: any) => {
         call.result = res
@@ -70,6 +72,7 @@ function wrap(
   return function(...args: any[]) {
     const call = {
       methodName,
+      resolvedPromise: false,
       ...measure(curMethod, target, args)
     }
     if (resolvePromises) handlePromises(call, callback)
