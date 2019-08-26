@@ -10,10 +10,14 @@ export interface MethodCall {
 export interface loggerCB {
   (call: MethodCall): void
 }
-export const isPromise = <T>(p: any): p is Promise<T> => {
+const isPromise = <T>(p: any): p is Promise<T> => {
   return p && p === Promise.resolve(p)
 }
-
+function eatException(callback: loggerCB, call: MethodCall) {
+  try {
+    callback(call)
+  } catch (ignore) {}
+}
 function handlePromises(call: MethodCall, callback: loggerCB) {
   const needResolution = isPromise(call.result)
   if (needResolution) {
@@ -30,8 +34,49 @@ function handlePromises(call: MethodCall, callback: loggerCB) {
         call.failed = true
         callback(call)
       })
-  }
+  } else eatException(callback, call)
   return needResolution
+}
+type Method = (...args: any[]) => any
+
+function measure(curMethod: Method, target: any, args: any[]) {
+  let failed = false
+  const start = Date.now()
+  let result, error
+  try {
+    result = curMethod.apply(target, args)
+  } catch (exception) {
+    failed = true
+    error = exception
+  }
+  const duration = Date.now() - start
+  return {
+    arguments: args,
+    start,
+    duration,
+    failed,
+    result,
+    error
+  }
+}
+
+function wrap(
+  curMethod: Method,
+  methodName: string,
+  target: any,
+  callback: loggerCB,
+  resolvePromises: boolean
+): any {
+  return function(...args: any[]) {
+    const call = {
+      methodName,
+      ...measure(curMethod, target, args)
+    }
+    if (resolvePromises) handlePromises(call, callback)
+    else eatException(callback, call)
+    if (call.error) throw call.error
+    return call.result
+  }
 }
 
 export function createProxy<T>(
@@ -43,34 +88,7 @@ export function createProxy<T>(
     get(target: any, propKey: any) {
       const curMethod = target[propKey]
       if (typeof curMethod === "function")
-        return function(...args: any[]) {
-          let failed = false
-          const start = Date.now()
-          let result, error
-          try {
-            result = curMethod.apply(target, args)
-          } catch (exception) {
-            failed = true
-            error = exception
-          }
-          const duration = Date.now() - start
-          const call = {
-            methodName: propKey,
-            arguments: args,
-            start,
-            duration,
-            failed,
-            result,
-            error
-          }
-          // handle promises
-          if (!(resolvePromises && handlePromises(call, callback)))
-            try {
-              callback(call)
-            } catch (ignore) {}
-          if (error) throw error
-          return result
-        }
+        return wrap(curMethod, propKey, target, callback, resolvePromises)
       return curMethod
     }
   }

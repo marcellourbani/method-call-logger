@@ -1,4 +1,4 @@
-import { createProxy, MethodCall, isPromise } from "./index"
+import { createProxy, MethodCall } from "./index"
 
 const testObject = {
   value: 1,
@@ -59,7 +59,7 @@ test("callback called on error", () => {
   expect(intercepted).toBe(true)
 })
 
-test("Async callback", () => {
+test("Async callback", async () => {
   let details: MethodCall | undefined = undefined
   const proxied = createProxy(testObject, actualDetails => {
     details = actualDetails
@@ -104,7 +104,7 @@ test("Async callback without proxy resolution", () => {
     .then(() => fail("promise chould have been rejected"))
     .catch(() => {
       if (!details) fail("callback not invoked")
-      expect(isPromise(details!.result)).toBe(true)
+      expect(typeof details!.result).toBe("object")
       expect(details!.error).toBeUndefined()
       return details!.result!.catch((err: Error) => {
         expect(err.message).toBe("rejected")
