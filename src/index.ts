@@ -1,3 +1,10 @@
+export interface MethodOverride {
+  (methodName: string, target: any, args: any[]): any
+}
+export interface LoggerConfig {
+  resolvePromises: boolean
+  methodsOverride?: Map<string, MethodOverride>
+}
 export interface MethodCall {
   methodName: string
   arguments: any[]
@@ -11,9 +18,11 @@ export interface MethodCall {
 export interface loggerCB {
   (call: MethodCall): void
 }
+
 const isPromise = <T>(p: any): p is Promise<T> => {
   return p && p === Promise.resolve(p)
 }
+
 function eatException(callback: loggerCB, call: MethodCall) {
   try {
     callback(call)
@@ -67,15 +76,20 @@ function wrap(
   methodName: string,
   target: any,
   callback: loggerCB,
-  resolvePromises: boolean
+  config: LoggerConfig
 ): any {
   return function(...args: any[]) {
+    const overridden =
+      config.methodsOverride && config.methodsOverride.get(methodName)
+    const method = overridden
+      ? () => overridden(methodName, target, args)
+      : curMethod
     const call = {
       methodName,
       resolvedPromise: false,
-      ...measure(curMethod, target, args)
+      ...measure(method, target, args)
     }
-    if (resolvePromises) handlePromises(call, callback)
+    if (config.resolvePromises) handlePromises(call, callback)
     else eatException(callback, call)
     if (call.error) throw call.error
     return call.result
@@ -85,13 +99,13 @@ function wrap(
 export function createProxy<T>(
   baseObject: T,
   callback: loggerCB,
-  resolvePromises = true
+  config: LoggerConfig = { resolvePromises: true }
 ) {
   const handler = {
     get(target: any, propKey: any) {
       const curMethod = target[propKey]
       if (typeof curMethod === "function")
-        return wrap(curMethod, propKey, target, callback, resolvePromises)
+        return wrap(curMethod, propKey, target, callback, config)
       return curMethod
     }
   }

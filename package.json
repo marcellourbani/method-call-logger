@@ -1,11 +1,13 @@
 {
   "name": "method-call-logger",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "description": "Logs method calls via Es6 proxies",
-  "main": "build/index.js",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "scripts": {
     "test": "jest",
-    "build": "tsc"
+    "build": "tsc",
+    "prepublish": "tsc"
   },
   "author": "Marcello Urbani <marcello.urbani@gmail.com>",
   "repository": {

@@ -1,4 +1,4 @@
-import { createProxy, MethodCall } from "./index"
+import { createProxy, MethodCall, LoggerConfig, MethodOverride } from "./index"
 
 const testObject = {
   value: 1,
@@ -20,7 +20,7 @@ const testObject = {
   }
 }
 
-function wrap(resolve = true) {
+function wrap(config?: LoggerConfig) {
   let details: MethodCall | undefined
   const ret = {
     details,
@@ -29,7 +29,7 @@ function wrap(resolve = true) {
       actualDetails => {
         ret.details = actualDetails
       },
-      resolve
+      config
     )
   }
   return ret
@@ -98,7 +98,38 @@ test("Async callback with errors", () => {
 })
 
 test("Async callback without proxy resolution", () => {
-  const wrapped = wrap(false)
+  const wrapped = wrap({ resolvePromises: false })
+
+  return wrapped.proxied
+    .failedPromise()
+    .then(() => fail("promise should have been rejected"))
+    .catch(() => {
+      if (!wrapped.details) fail("callback not invoked")
+      expect(typeof wrapped.details!.result).toBe("object")
+      expect(wrapped.details!.error).toBeUndefined()
+      expect(wrapped.details!.resolvedPromise).toBe(false)
+      return wrapped.details!.result!.catch((err: Error) => {
+        expect(err.message).toBe("rejected")
+      })
+    })
+})
+
+test("Override", () => {
+  const config = {
+    resolvePromises: false,
+    methodsOverride: new Map<string, MethodOverride>()
+  }
+  const wrapped = wrap(config)
+  config.methodsOverride.set("method", () => 2)
+  config.methodsOverride.set("failedPromise", (name: string, target, args) => {
+    const result = target[name].apply(target, args)
+    return result.catch((err: Error) => {
+      throw new Error(`msg:${err.message}`)
+    })
+  })
+
+  const value = wrapped.proxied.method()
+  expect(value).toBe(2)
 
   return wrapped.proxied
     .failedPromise()
@@ -109,7 +140,7 @@ test("Async callback without proxy resolution", () => {
       expect(wrapped.details!.error).toBeUndefined()
       expect(wrapped.details!.resolvedPromise).toBe(false)
       return wrapped.details!.result!.catch((err: Error) => {
-        expect(err.message).toBe("rejected")
+        expect(err.message).toBe("msg:rejected")
       })
     })
 })
