@@ -1,3 +1,6 @@
+[![Build Status](https://travis-ci.com/marcellourbani/method-call-logger.svg?branch=master)](https://travis-ci.com/marcellourbani/method-call-logger)
+[![Downloads](https://badgen.net/npm/dt/method-call-logger)](https://www.npmjs.com/package/method-call-logger)
+
 # Method call logger
 
 A simple helper to log method calls to a given object
