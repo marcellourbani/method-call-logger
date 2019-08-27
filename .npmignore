@@ -1,8 +1,8 @@
 node_modules
 build
 src
-.vscode
 tsconfig.json
 *.tgz
 dist/index.test.*
 jest.*
+.*
