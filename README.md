@@ -46,8 +46,10 @@ The output will look like:
 
 An optional configuration object can be passed with two fields:
 
-- resolvePromises: resolve promises before calling the log function (and set result/failed/error accordingly). Defaults to true
-- methodsOverride: an optional map object to override the original method call. The result will be logged normally
+- resolvePromises: resolve promises before calling the log function
+  (and set result/failed/error accordingly). Defaults to true
+- methodsOverride: an optional map object to override the original method call.
+  The result will be logged normally
 
 ```typescript
 import {
@@ -72,9 +74,9 @@ const config: LoggerConfig = {
   resolvePromises: false,
   methodsOverride: new Map<string, MethodOverride>()
 }
-config.methodsOverride!.set("sayHello", (name: string, target, args) => {
+config.methodsOverride!.set("sayHello", (...args) => {
   //call the original method
-  const result = target[name].apply(target, args)
+  const result = original.sayHello(...args)
   return `intercepted:${result}`
 })
 

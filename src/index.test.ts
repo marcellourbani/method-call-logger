@@ -2,6 +2,13 @@ import { createProxy, MethodCall, LoggerConfig, MethodOverride } from "./index"
 
 const testObject = {
   value: 1,
+
+  get prop() {
+    return this.value
+  },
+  set prop(value: number) {
+    this.value = value
+  },
   method: function() {
     return this.value
   },
@@ -30,7 +37,8 @@ function wrap(config?: LoggerConfig) {
         ret.details = actualDetails
       },
       config
-    )
+    ),
+    testObject
   }
   return ret
 }
@@ -121,8 +129,8 @@ test("Override", () => {
   }
   const wrapped = wrap(config)
   config.methodsOverride.set("method", () => 2)
-  config.methodsOverride.set("failedPromise", (name: string, target, args) => {
-    const result = target[name].apply(target, args)
+  config.methodsOverride.set("failedPromise", () => {
+    const result = wrapped.testObject.failedPromise()
     return result.catch((err: Error) => {
       throw new Error(`msg:${err.message}`)
     })
@@ -143,4 +151,32 @@ test("Override", () => {
         expect(err.message).toBe("msg:rejected")
       })
     })
+})
+
+class Foo {
+  public f: number = 0
+  private ff = 2
+  protected foo = "f"
+}
+class Bar extends Foo {
+  private b = 1
+}
+test("proxy intercepts property get", () => {
+  const wrapped = wrap()
+  const res = wrapped.proxied.prop
+  expect(res).toBe(1)
+  expect(wrapped.details).toBeDefined()
+  expect(wrapped.details!.resolvedPromise).toBe(false)
+  expect(wrapped.details!.result).toBe(1)
+  expect(wrapped.details!.callType).toBe("get")
+})
+
+test("proxy intercepts property set", () => {
+  const wrapped = wrap()
+  wrapped.proxied.prop = 2
+  expect(wrapped.details).toBeDefined()
+  expect(wrapped.details!.resolvedPromise).toBe(false)
+  expect(wrapped.details!.result).toBe(true)
+  expect(wrapped.details!.callType).toBe("set")
+  expect(wrapped.proxied.prop).toBe(2)
 })
