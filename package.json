@@ -1,6 +1,6 @@
 {
   "name": "method-call-logger",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "description": "Logs method calls via Es6 proxies",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
