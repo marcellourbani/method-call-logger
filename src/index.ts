@@ -1,4 +1,3 @@
-import { CallType } from "./index"
 export interface MethodOverride {
   (methodName: string, target: any, args: any[]): any
 }
